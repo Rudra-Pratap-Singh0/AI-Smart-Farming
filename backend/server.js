@@ -65,4 +65,42 @@ app.post("/api/irrigation", (req, res) => {
   res.json({ litersPerAcre: demand * 100, urgency, message: demand > 18 ? "Irrigate early morning or after sunset to reduce evaporation." : "Soil moisture is adequate; monitor again tomorrow." });
 });
 
+app.post("/api/disease-risk", (req, res) => {
+  const temperature = number(req.body?.temperature, 28);
+  const humidity = number(req.body?.humidity, 60);
+  const moisture = number(req.body?.moisture, 45);
+  const riskScore = Math.max(8, Math.min(92, Math.round((humidity - 42) * 1.2 + (moisture - 25) * 0.55 + (temperature > 31 ? 9 : 0))));
+  const level = riskScore >= 65 ? "High" : riskScore >= 35 ? "Medium" : "Low";
+  const disease = humidity > 75 ? "Fungal leaf spot" : temperature > 33 ? "Heat stress" : "No dominant risk";
+  const action = level === "High"
+    ? "Inspect lower leaves today, improve airflow, and consult a local agronomist before treatment."
+    : level === "Medium"
+      ? "Check leaves every two days and avoid wetting foliage during irrigation."
+      : "Current conditions are stable. Continue weekly crop scouting.";
+  res.json({ level, score: riskScore, disease, action, scannedAt: new Date().toISOString() });
+});
+
+app.get("/api/market-prices", (_req, res) => {
+  res.json({
+    market: "Indicative local market rates",
+    updated: new Date().toISOString(),
+    prices: [
+      { crop: "Rice", price: 2350, unit: "₹ / quintal", trend: "+2.4%", direction: "up" },
+      { crop: "Maize", price: 2180, unit: "₹ / quintal", trend: "+0.8%", direction: "up" },
+      { crop: "Cotton", price: 6900, unit: "₹ / quintal", trend: "-1.1%", direction: "down" }
+    ]
+  });
+});
+
+app.post("/api/crop-plan", (req, res) => {
+  const { crop } = recommendCrop(req.body || {});
+  const plans = {
+    Rice: ["Prepare seedbed and test water source", "Transplant seedlings; keep shallow water", "Scout for pests and record tillering"],
+    Maize: ["Prepare rows and apply compost", "Sow seeds and check emergence", "Monitor moisture at root zone"],
+    Cotton: ["Prepare well-drained rows", "Sow after stable warm weather", "Monitor early pest pressure"],
+    Millet: ["Prepare seedbed with minimal tillage", "Sow before expected rainfall", "Thin seedlings and monitor weeds"]
+  };
+  res.json({ crop: crop.name, weekPlan: plans[crop.name], seasonTip: crop.note });
+});
+
 app.listen(port, () => console.log(`AI Smart Farming API listening on ${port}`));
