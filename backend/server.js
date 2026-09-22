@@ -14,6 +14,24 @@ const crops = [
   { name: "Millet", icon: "🌿", minRain: 20, maxPh: 8.4, note: "A drought-tolerant option for lower-rainfall conditions." }
 ];
 
+const farmSnapshot = {
+  farm: { name: "Green Valley Farm", location: "Lucknow, Uttar Pradesh", totalArea: 12.5, fields: 3 },
+  fields: [
+    { id: "north-01", name: "North Field", area: 5.2, crop: "Maize", stage: "Vegetative", health: 82, moisture: 42 },
+    { id: "east-02", name: "East Field", area: 4.1, crop: "Rice", stage: "Tillering", health: 76, moisture: 51 },
+    { id: "orchard-03", name: "Orchard Block", area: 3.2, crop: "Mango", stage: "Fruit set", health: 88, moisture: 47 }
+  ],
+  alerts: [
+    { id: "soil-moisture", level: "Warning", title: "North Field moisture is falling", detail: "Check irrigation within the next 12 hours." },
+    { id: "weather", level: "Normal", title: "Light rainfall expected", detail: "Forecast rainfall may reduce tomorrow's irrigation need." }
+  ],
+  tasks: [
+    { id: "task-1", title: "Inspect maize leaves for pest damage", field: "North Field", due: "Today", done: false },
+    { id: "task-2", title: "Record soil-moisture reading", field: "East Field", due: "Tomorrow", done: false },
+    { id: "task-3", title: "Apply planned compost", field: "Orchard Block", due: "24 Sep", done: true }
+  ]
+};
+
 function number(value, fallback) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
@@ -39,8 +57,41 @@ function recommendCrop(input) {
   return { crop, confidence, soilStatus };
 }
 
+function fieldIntelligence(input) {
+  const nitrogen = number(input.nitrogen, 45);
+  const phosphorus = number(input.phosphorus, 35);
+  const potassium = number(input.potassium, 35);
+  const ph = number(input.ph, 6.5);
+  const rainfall = number(input.rainfall, 60);
+  const moisture = number(input.moisture, 45);
+  const { crop, confidence } = recommendCrop(input);
+  const soilScore = Math.max(35, Math.min(96, Math.round(70 + (nitrogen + phosphorus + potassium) / 10 - Math.abs(ph - 6.6) * 7)));
+  const deficiencies = [nitrogen < 40 && "Nitrogen", phosphorus < 30 && "Phosphorus", potassium < 30 && "Potassium"].filter(Boolean);
+  const fertilizer = deficiencies.length
+    ? `Apply a balanced NPK blend, prioritising ${deficiencies.join(" and ")}.`
+    : "Nutrient levels are broadly balanced; use compost or organic manure for maintenance.";
+  const yieldTons = Math.max(1.5, Number((2.1 + confidence / 32 + moisture / 100 + rainfall / 220).toFixed(1)));
+  const revenue = Math.round(yieldTons * 1000 * (crop.name === "Cotton" ? 69 : crop.name === "Rice" ? 23.5 : 21.8));
+  const cost = Math.round(revenue * 0.56);
+  return {
+    soilHealth: { score: soilScore, label: soilScore >= 75 ? "Healthy" : soilScore >= 55 ? "Needs attention" : "At risk", deficiencies, recommendation: fertilizer },
+    fertilizerPlan: { product: deficiencies.length ? "Balanced NPK + micronutrient mix" : "Organic compost + maintenance NPK", quantity: `${Math.max(35, 80 - Math.round((nitrogen + phosphorus + potassium) / 4))} kg / acre`, schedule: "Split into two applications, 14 days apart", estimatedCost: Math.max(950, deficiencies.length * 620 + 980) },
+    yieldForecast: { crop: crop.name, tonsPerAcre: yieldTons, confidence, harvestWindow: crop.name === "Rice" ? "105-120 days" : crop.name === "Maize" ? "90-110 days" : "100-130 days" },
+    economics: { estimatedRevenue: revenue, estimatedCost: cost, estimatedProfit: revenue - cost, roi: Math.round(((revenue - cost) / cost) * 100) }
+  };
+}
+
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", service: "AI Smart Farming API" });
+});
+
+app.get("/api/dashboard", (_req, res) => res.json(farmSnapshot));
+
+app.patch("/api/tasks/:taskId", (req, res) => {
+  const task = farmSnapshot.tasks.find((item) => item.id === req.params.taskId);
+  if (!task) return res.status(404).json({ error: "Task not found" });
+  task.done = Boolean(req.body?.done);
+  res.json(task);
 });
 
 app.post("/api/recommendation", (req, res) => {
@@ -54,6 +105,8 @@ app.post("/api/recommendation", (req, res) => {
     nextSteps: ["Check soil moisture before irrigation.", "Record this result with your field observations.", "Use local weather forecasts before sowing."]
   });
 });
+
+app.post("/api/field-intelligence", (req, res) => res.json(fieldIntelligence(req.body || {})));
 
 app.post("/api/irrigation", (req, res) => {
   const temperature = number(req.body?.temperature, 28);
