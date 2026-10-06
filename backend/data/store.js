@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 
 const directory = path.dirname(fileURLToPath(import.meta.url));
 const file = path.join(directory, "farm-data.json");
-const defaultData = { users: [], uploads: [] };
+const defaultData = { users: [], uploads: [], inventory: [], expenses: [] };
 
 export async function readStore() {
   await mkdir(directory, { recursive: true });

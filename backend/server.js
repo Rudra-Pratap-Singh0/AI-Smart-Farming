@@ -151,6 +151,46 @@ app.get("/api/disease-screening", requireAuth, async (req, res) => {
   res.json(store.uploads.filter((item) => item.userId === req.user.id));
 });
 
+app.get("/api/inventory", requireAuth, async (req, res) => {
+  const store = await readStore();
+  const items = store.inventory.filter((item) => item.userId === req.user.id);
+  res.json(items);
+});
+
+app.post("/api/inventory", requireAuth, async (req, res) => {
+  const { name, category = "Farm input", quantity, unit = "kg", reorderAt = 0, cost = 0 } = req.body || {};
+  if (!name || !Number.isFinite(Number(quantity))) return res.status(400).json({ error: "Item name and quantity are required" });
+  const item = { id: crypto.randomUUID(), userId: req.user.id, name, category, quantity: Number(quantity), unit, reorderAt: Number(reorderAt), cost: Number(cost), createdAt: new Date().toISOString() };
+  await updateStore((data) => ({ ...data, inventory: [item, ...(data.inventory || [])] }));
+  res.status(201).json(item);
+});
+
+app.patch("/api/inventory/:itemId", requireAuth, async (req, res) => {
+  let changed;
+  await updateStore((data) => ({ ...data, inventory: (data.inventory || []).map((item) => {
+    if (item.id !== req.params.itemId || item.userId !== req.user.id) return item;
+    changed = { ...item, quantity: Number(req.body?.quantity ?? item.quantity), updatedAt: new Date().toISOString() };
+    return changed;
+  }) }));
+  if (!changed) return res.status(404).json({ error: "Inventory item not found" });
+  res.json(changed);
+});
+
+app.get("/api/economics", requireAuth, async (req, res) => {
+  const store = await readStore();
+  const expenses = (store.expenses || []).filter((item) => item.userId === req.user.id);
+  const spent = expenses.reduce((sum, item) => sum + item.amount, 0);
+  res.json({ expenses, spent, categories: { seed: expenses.filter((item) => item.category === "Seed").reduce((sum, item) => sum + item.amount, 0), fertilizer: expenses.filter((item) => item.category === "Fertilizer").reduce((sum, item) => sum + item.amount, 0), labour: expenses.filter((item) => item.category === "Labour").reduce((sum, item) => sum + item.amount, 0) } });
+});
+
+app.post("/api/economics/expenses", requireAuth, async (req, res) => {
+  const { title, category = "Other", amount } = req.body || {};
+  if (!title || !Number.isFinite(Number(amount)) || Number(amount) <= 0) return res.status(400).json({ error: "Expense title and a positive amount are required" });
+  const expense = { id: crypto.randomUUID(), userId: req.user.id, title, category, amount: Number(amount), date: new Date().toISOString() };
+  await updateStore((data) => ({ ...data, expenses: [expense, ...(data.expenses || [])] }));
+  res.status(201).json(expense);
+});
+
 app.get("/api/dashboard", (_req, res) => res.json(farmSnapshot));
 
 app.patch("/api/tasks/:taskId", (req, res) => {
