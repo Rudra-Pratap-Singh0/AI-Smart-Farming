@@ -6,5 +6,6 @@ import "./advanced.css";
 import "./phase-two.css";
 import "./operations.css";
 import "./sustainability.css";
+import "./knowledge.css";
 
 createRoot(document.getElementById("root")).render(<App />);

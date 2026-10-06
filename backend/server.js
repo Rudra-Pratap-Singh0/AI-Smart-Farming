@@ -224,6 +224,18 @@ app.post("/api/farm-performance", requireAuth, (req, res) => {
   res.json({ performance, sustainability, scores: { soil, nutrient: nutrientScore, water: waterScore }, tips: [waterScore < 70 ? "Schedule irrigation using soil moisture, not a fixed calendar." : "Water use is within a healthy range.", soil < 70 ? "Add compost to strengthen organic matter and soil resilience." : "Maintain soil health with seasonal testing.", "Record input use to keep the sustainability score accurate."] });
 });
 
+app.get("/api/knowledge", (req, res) => {
+  const guides = [
+    { id: "maize-water", crop: "Maize", category: "Water", title: "Protect maize during the vegetative stage", summary: "Irrigate only when root-zone moisture declines; avoid standing water and inspect the whorl weekly.", season: "Kharif" },
+    { id: "rice-nutrition", crop: "Rice", category: "Nutrition", title: "Split nitrogen application for rice", summary: "Apply nitrogen in planned splits rather than one dose to reduce loss and support tillering.", season: "Kharif" },
+    { id: "cotton-pest", crop: "Cotton", category: "Pest prevention", title: "Scout cotton before spraying", summary: "Check the underside of leaves twice a week and use threshold-based treatment decisions.", season: "Kharif" },
+    { id: "millet-soil", crop: "Millet", category: "Soil", title: "Build resilience with organic matter", summary: "Compost and crop residue help millet retain moisture during dry periods.", season: "Summer" },
+    { id: "general-weather", crop: "All crops", category: "Weather", title: "Plan field work around rain windows", summary: "Use short forecasts to avoid spraying before rain and to schedule irrigation efficiently.", season: "All seasons" }
+  ];
+  const query = String(req.query.q || "").toLowerCase();
+  res.json(query ? guides.filter((guide) => Object.values(guide).some((value) => String(value).toLowerCase().includes(query))) : guides);
+});
+
 app.get("/api/dashboard", (_req, res) => res.json(farmSnapshot));
 
 app.patch("/api/tasks/:taskId", (req, res) => {

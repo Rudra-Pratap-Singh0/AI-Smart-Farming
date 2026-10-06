@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import PhaseTwo from "./PhaseTwo";
 import Operations from "./Operations";
 import Sustainability from "./Sustainability";
+import KnowledgeHub from "./KnowledgeHub";
 
 const defaults = { nitrogen: 48, phosphorus: 38, potassium: 42, temperature: 29, humidity: 61, ph: 6.6, rainfall: 68, moisture: 42 };
 const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
@@ -64,6 +65,7 @@ export default function App() {
     <PhaseTwo apiUrl={apiUrl} />
     <Operations apiUrl={apiUrl} />
     <Sustainability apiUrl={apiUrl} fieldValues={values} />
+    <KnowledgeHub apiUrl={apiUrl} />
     <section className="tips"><p className="eyebrow">FARMING INSIGHTS</p><h2>Small actions, healthier harvests.</h2><div><article>🌦️<h3>Watch the forecast</h3><p>Delay irrigation if useful rainfall is expected in the next 24 hours.</p></article><article>🧪<h3>Test soil regularly</h3><p>Seasonal soil tests make nutrient recommendations more reliable.</p></article><article>📒<h3>Keep field records</h3><p>Compare advice with yield outcomes to improve your next season.</p></article></div></section>
     <footer>AI Smart Farming · Built for practical, data-informed agriculture</footer>
   </main>;
