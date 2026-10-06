@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import PhaseTwo from "./PhaseTwo";
 import Operations from "./Operations";
+import Sustainability from "./Sustainability";
 
 const defaults = { nitrogen: 48, phosphorus: 38, potassium: 42, temperature: 29, humidity: 61, ph: 6.6, rainfall: 68, moisture: 42 };
 const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
@@ -62,6 +63,7 @@ export default function App() {
     <section className="decision-grid"><div className="panel decision-card"><p className="eyebrow">SOIL HEALTH CARD</p>{fieldIntel ? <><div className="score-ring"><b>{fieldIntel.soilHealth.score}</b><span>{fieldIntel.soilHealth.label}</span></div><p>{fieldIntel.soilHealth.deficiencies.length ? `Watch: ${fieldIntel.soilHealth.deficiencies.join(", ")}` : "No major NPK deficiency detected"}</p><small>{fieldIntel.soilHealth.recommendation}</small></> : <div className="empty">Run analysis to generate a soil-health card.</div>}</div><div className="panel decision-card"><p className="eyebrow">FERTILIZER PLAN</p>{fieldIntel ? <><h3>{fieldIntel.fertilizerPlan.product}</h3><b className="metric">{fieldIntel.fertilizerPlan.quantity}</b><p>{fieldIntel.fertilizerPlan.schedule}</p><small>Estimated input cost: ₹{fieldIntel.fertilizerPlan.estimatedCost.toLocaleString()} / acre</small></> : <div className="empty">A field-specific fertilizer plan will appear here.</div>}</div><div className="panel decision-card"><p className="eyebrow">YIELD & PROFIT FORECAST</p>{fieldIntel ? <><h3>{fieldIntel.yieldForecast.crop}</h3><b className="metric">{fieldIntel.yieldForecast.tonsPerAcre} t / acre</b><p>Harvest window: {fieldIntel.yieldForecast.harvestWindow}</p><small>Est. profit: ₹{fieldIntel.economics.estimatedProfit.toLocaleString()} · ROI {fieldIntel.economics.roi}%</small></> : <div className="empty">Run analysis to estimate yield, revenue, and ROI.</div>}</div></section>
     <PhaseTwo apiUrl={apiUrl} />
     <Operations apiUrl={apiUrl} />
+    <Sustainability apiUrl={apiUrl} fieldValues={values} />
     <section className="tips"><p className="eyebrow">FARMING INSIGHTS</p><h2>Small actions, healthier harvests.</h2><div><article>🌦️<h3>Watch the forecast</h3><p>Delay irrigation if useful rainfall is expected in the next 24 hours.</p></article><article>🧪<h3>Test soil regularly</h3><p>Seasonal soil tests make nutrient recommendations more reliable.</p></article><article>📒<h3>Keep field records</h3><p>Compare advice with yield outcomes to improve your next season.</p></article></div></section>
     <footer>AI Smart Farming · Built for practical, data-informed agriculture</footer>
   </main>;

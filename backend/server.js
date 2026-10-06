@@ -191,6 +191,39 @@ app.post("/api/economics/expenses", requireAuth, async (req, res) => {
   res.status(201).json(expense);
 });
 
+app.get("/api/notifications", requireAuth, async (req, res) => {
+  const store = await readStore();
+  const saved = (store.notifications || []).filter((item) => item.userId === req.user.id);
+  const system = saved.length ? [] : [
+    { id: "welcome-alert", userId: req.user.id, level: "Normal", title: "Farm alert center is active", detail: "You will see field, inventory, and weather warnings here.", read: false, createdAt: new Date().toISOString() },
+    { id: "water-alert", userId: req.user.id, level: "Warning", title: "Review North Field soil moisture", detail: "A current moisture reading of 42% may require irrigation planning.", read: false, createdAt: new Date().toISOString() }
+  ];
+  if (system.length) await updateStore((data) => ({ ...data, notifications: [...system, ...(data.notifications || [])] }));
+  res.json(system.length ? system : saved);
+});
+
+app.patch("/api/notifications/:notificationId", requireAuth, async (req, res) => {
+  let changed;
+  await updateStore((data) => ({ ...data, notifications: (data.notifications || []).map((item) => {
+    if (item.id !== req.params.notificationId || item.userId !== req.user.id) return item;
+    changed = { ...item, read: Boolean(req.body?.read) };
+    return changed;
+  }) }));
+  if (!changed) return res.status(404).json({ error: "Notification not found" });
+  res.json(changed);
+});
+
+app.post("/api/farm-performance", requireAuth, (req, res) => {
+  const soil = number(req.body?.soilScore, 78);
+  const moisture = number(req.body?.moisture, 45);
+  const rainfall = number(req.body?.rainfall, 55);
+  const nutrientScore = number(req.body?.nutrientScore, 75);
+  const waterScore = Math.max(45, Math.min(96, Math.round(78 + moisture / 4 - Math.abs(rainfall - 60) / 8)));
+  const sustainability = Math.max(40, Math.min(96, Math.round((soil + nutrientScore + waterScore) / 3)));
+  const performance = Math.round((soil * 0.4) + (nutrientScore * 0.35) + (waterScore * 0.25));
+  res.json({ performance, sustainability, scores: { soil, nutrient: nutrientScore, water: waterScore }, tips: [waterScore < 70 ? "Schedule irrigation using soil moisture, not a fixed calendar." : "Water use is within a healthy range.", soil < 70 ? "Add compost to strengthen organic matter and soil resilience." : "Maintain soil health with seasonal testing.", "Record input use to keep the sustainability score accurate."] });
+});
+
 app.get("/api/dashboard", (_req, res) => res.json(farmSnapshot));
 
 app.patch("/api/tasks/:taskId", (req, res) => {
