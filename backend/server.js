@@ -1,11 +1,25 @@
 import cors from "cors";
 import express from "express";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import multer from "multer";
+import { readStore, updateStore } from "./data/store.js";
 
 const app = express();
 const port = process.env.PORT || 5000;
+const jwtSecret = process.env.JWT_SECRET || "development-only-change-this-secret";
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 }, fileFilter: (_req, file, callback) => callback(null, /^image\/(jpeg|png|webp)$/.test(file.mimetype)) });
 
 app.use(cors());
 app.use(express.json());
+
+function createToken(user) { return jwt.sign({ id: user.id, name: user.name, role: user.role }, jwtSecret, { expiresIn: "7d" }); }
+function requireAuth(req, res, next) {
+  const token = req.headers.authorization?.replace("Bearer ", "");
+  if (!token) return res.status(401).json({ error: "Authentication required" });
+  try { req.user = jwt.verify(token, jwtSecret); next(); }
+  catch { res.status(401).json({ error: "Invalid or expired session" }); }
+}
 
 const crops = [
   { name: "Rice", icon: "🌾", minRain: 120, maxPh: 7.2, note: "Keep the soil consistently moist during early growth." },
@@ -83,6 +97,58 @@ function fieldIntelligence(input) {
 
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", service: "AI Smart Farming API" });
+});
+
+app.post("/api/auth/register", async (req, res) => {
+  const { name, email, password, language = "en", location = "Lucknow, Uttar Pradesh" } = req.body || {};
+  if (!name || !email || !password || password.length < 8) return res.status(400).json({ error: "Name, email, and an 8-character password are required" });
+  const store = await readStore();
+  if (store.users.some((user) => user.email.toLowerCase() === email.toLowerCase())) return res.status(409).json({ error: "An account already exists for this email" });
+  const user = { id: crypto.randomUUID(), name, email: email.toLowerCase(), passwordHash: await bcrypt.hash(password, 12), language, location, role: "farmer", createdAt: new Date().toISOString() };
+  await updateStore((data) => ({ ...data, users: [...data.users, user] }));
+  res.status(201).json({ token: createToken(user), user: { id: user.id, name, email: user.email, language, location, role: user.role } });
+});
+
+app.post("/api/auth/login", async (req, res) => {
+  const { email, password } = req.body || {};
+  const store = await readStore();
+  const user = store.users.find((item) => item.email === String(email).toLowerCase());
+  if (!user || !await bcrypt.compare(password || "", user.passwordHash)) return res.status(401).json({ error: "Incorrect email or password" });
+  res.json({ token: createToken(user), user: { id: user.id, name: user.name, email: user.email, language: user.language, location: user.location, role: user.role } });
+});
+
+app.get("/api/auth/me", requireAuth, async (req, res) => {
+  const store = await readStore();
+  const user = store.users.find((item) => item.id === req.user.id);
+  if (!user) return res.status(404).json({ error: "User not found" });
+  res.json({ id: user.id, name: user.name, email: user.email, language: user.language, location: user.location, role: user.role });
+});
+
+app.get("/api/weather", async (req, res) => {
+  const latitude = Number(req.query.latitude || 26.8467);
+  const longitude = Number(req.query.longitude || 80.9462);
+  try {
+    const url = new URL("https://api.open-meteo.com/v1/forecast");
+    url.search = new URLSearchParams({ latitude, longitude, current: "temperature_2m,relative_humidity_2m,precipitation,weather_code", daily: "temperature_2m_max,temperature_2m_min,precipitation_sum", timezone: "auto", forecast_days: "7" });
+    const response = await fetch(url);
+    if (!response.ok) throw new Error("Weather provider unavailable");
+    const data = await response.json();
+    res.json({ source: "Open-Meteo", live: true, current: data.current, daily: data.daily });
+  } catch {
+    res.json({ source: "Cached demo", live: false, current: { temperature_2m: 29, relative_humidity_2m: 61, precipitation: 0 }, daily: { time: [], temperature_2m_max: [], temperature_2m_min: [], precipitation_sum: [] } });
+  }
+});
+
+app.post("/api/disease-screening", requireAuth, upload.single("leafImage"), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: "Upload a JPG, PNG, or WEBP leaf image (max 5 MB)" });
+  const item = { id: crypto.randomUUID(), userId: req.user.id, fileName: req.file.originalname, mimeType: req.file.mimetype, bytes: req.file.size, crop: req.body.crop || "Unknown crop", status: "pending-model-analysis", createdAt: new Date().toISOString() };
+  await updateStore((data) => ({ ...data, uploads: [item, ...data.uploads].slice(0, 50) }));
+  res.status(202).json({ upload: item, message: "Image received. This prototype stores the screening request; attach a trained disease-vision model before using it for diagnosis or treatment decisions." });
+});
+
+app.get("/api/disease-screening", requireAuth, async (req, res) => {
+  const store = await readStore();
+  res.json(store.uploads.filter((item) => item.userId === req.user.id));
 });
 
 app.get("/api/dashboard", (_req, res) => res.json(farmSnapshot));

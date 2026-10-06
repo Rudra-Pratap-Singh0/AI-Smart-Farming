@@ -30,4 +30,13 @@ Open `http://localhost:5173`. The API runs on `http://localhost:5000`.
 - `POST /api/recommendation`
 - `POST /api/irrigation`
 
+## Phase 2 connected features
+
+- Farmer account registration and login with hashed passwords and JWT sessions
+- Persistent local data store for farmer accounts and image-screening requests
+- Live seven-day weather data from Open-Meteo, with a safe fallback when unavailable
+- Authenticated leaf image intake for JPG, PNG, and WEBP files up to 5 MB
+
+Before deploying, copy `backend/.env.example` to `backend/.env` and set a strong `JWT_SECRET`. The local JSON store is useful for development; switch it to a managed database before a multi-user production deployment.
+
 The current recommendation engine is deterministic demo logic. Replace it with a trained prediction service when field data is available.

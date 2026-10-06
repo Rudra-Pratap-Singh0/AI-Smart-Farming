@@ -4,4 +4,6 @@ dist/
 .env.*
 !.env.example
 coverage/
+backend/data/farm-data.json
+backend/uploads/
 .DS_Store
