@@ -12,5 +12,6 @@ import "./field-manager.css";
 import "./simulator.css";
 import "./rotation.css";
 import "./lifecycle.css";
+import "./forecast.css";
 
 createRoot(document.getElementById("root")).render(<App />);
