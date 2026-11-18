@@ -191,6 +191,30 @@ app.post("/api/economics/expenses", requireAuth, async (req, res) => {
   res.status(201).json(expense);
 });
 
+app.get("/api/fields", requireAuth, async (req, res) => {
+  const store = await readStore();
+  res.json((store.fields || []).filter((field) => field.userId === req.user.id));
+});
+
+app.post("/api/fields", requireAuth, async (req, res) => {
+  const { name, area, crop, stage = "Planning", latitude, longitude } = req.body || {};
+  if (!name || !Number.isFinite(Number(area)) || Number(area) <= 0) return res.status(400).json({ error: "Field name and a positive area are required" });
+  const field = { id: crypto.randomUUID(), userId: req.user.id, name, area: Number(area), crop: crop || "Not selected", stage, latitude: Number(latitude) || null, longitude: Number(longitude) || null, createdAt: new Date().toISOString() };
+  await updateStore((data) => ({ ...data, fields: [field, ...(data.fields || [])] }));
+  res.status(201).json(field);
+});
+
+app.patch("/api/fields/:fieldId", requireAuth, async (req, res) => {
+  let changed;
+  await updateStore((data) => ({ ...data, fields: (data.fields || []).map((field) => {
+    if (field.id !== req.params.fieldId || field.userId !== req.user.id) return field;
+    changed = { ...field, ...req.body, id: field.id, userId: field.userId, updatedAt: new Date().toISOString() };
+    return changed;
+  }) }));
+  if (!changed) return res.status(404).json({ error: "Field not found" });
+  res.json(changed);
+});
+
 app.get("/api/notifications", requireAuth, async (req, res) => {
   const store = await readStore();
   const saved = (store.notifications || []).filter((item) => item.userId === req.user.id);

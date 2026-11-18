@@ -8,5 +8,6 @@ import "./operations.css";
 import "./sustainability.css";
 import "./knowledge.css";
 import "./copilot.css";
+import "./field-manager.css";
 
 createRoot(document.getElementById("root")).render(<App />);
