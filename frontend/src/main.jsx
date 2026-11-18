@@ -10,5 +10,6 @@ import "./knowledge.css";
 import "./copilot.css";
 import "./field-manager.css";
 import "./simulator.css";
+import "./rotation.css";
 
 createRoot(document.getElementById("root")).render(<App />);

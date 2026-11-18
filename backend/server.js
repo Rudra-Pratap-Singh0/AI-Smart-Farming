@@ -286,6 +286,17 @@ app.post("/api/simulate", (req, res) => {
   res.json({ yieldTons, cost, revenue, profit: revenue - cost, risk, recommendation: risk > 40 ? "Increase weather readiness or refine irrigation scheduling to reduce risk." : "This scenario is reasonably balanced; monitor field readings weekly." });
 });
 
+app.post("/api/crop-rotation", (req, res) => {
+  const previous = String(req.body?.previousCrop || "Maize");
+  const objective = String(req.body?.objective || "Soil health");
+  const rotations = {
+    Rice: ["Millet", "Maize"], Maize: ["Millet", "Rice"], Cotton: ["Millet", "Maize"], Millet: ["Rice", "Maize"]
+  };
+  const suggestions = rotations[previous] || ["Millet", "Maize"];
+  const reason = objective === "Soil health" ? "Alternating crop families can help diversify nutrient demand and break common pest cycles." : objective === "Water saving" ? "Choose a lower-water crop after a water-intensive season and improve residue cover." : "Compare expected market price, input cost, and water availability before finalizing.";
+  res.json({ previous, objective, suggestions, reason, checklist: ["Review soil test and last season input records", "Check water availability before sowing", "Update the field crop history after planting"] });
+});
+
 app.get("/api/dashboard", (_req, res) => res.json(farmSnapshot));
 
 app.patch("/api/tasks/:taskId", (req, res) => {
