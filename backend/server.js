@@ -236,6 +236,20 @@ app.get("/api/knowledge", (req, res) => {
   res.json(query ? guides.filter((guide) => Object.values(guide).some((value) => String(value).toLowerCase().includes(query))) : guides);
 });
 
+app.post("/api/copilot", (req, res) => {
+  const question = String(req.body?.question || "").trim();
+  if (!question) return res.status(400).json({ error: "Ask a farming question" });
+  const text = question.toLowerCase();
+  let answer = "For the best advice, record your crop, field, soil moisture, and recent weather first. Start with a field analysis in the dashboard.";
+  let topic = "Farm planning";
+  if (/water|irrig|paani|सिंचाई/.test(text)) { topic = "Irrigation"; answer = "Check root-zone moisture before watering. If moisture is low, irrigate early morning or after sunset and avoid wetting leaves in humid conditions."; }
+  else if (/disease|pest|leaf|disease|कीट|रोग/.test(text)) { topic = "Crop health"; answer = "Inspect leaves from the lower canopy first. Upload a clear leaf photo in the screening module, then consult an agronomist before applying treatment."; }
+  else if (/fertili|npk|soil|fertilizer|खाद|मिट्टी/.test(text)) { topic = "Soil nutrition"; answer = "Use the soil-health card to check NPK and pH. Split fertilizer applications and use compost to support organic matter and water retention."; }
+  else if (/weather|rain|forecast|mausam|बारिश/.test(text)) { topic = "Weather"; answer = "Review live weather before irrigation, spraying, or harvesting. Avoid spraying ahead of rain and plan field work in dry forecast windows."; }
+  else if (/market|price|mandi|profit|बाजार/.test(text)) { topic = "Farm economics"; answer = "Compare market rates with your cost and expected yield before selling. Keep seed, fertilizer, labour, and transport expenses updated in Farm Operations."; }
+  res.json({ topic, answer, disclaimer: "This is rule-based farm guidance, not a substitute for a local agronomist or official treatment label." });
+});
+
 app.get("/api/dashboard", (_req, res) => res.json(farmSnapshot));
 
 app.patch("/api/tasks/:taskId", (req, res) => {

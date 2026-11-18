@@ -7,5 +7,6 @@ import "./phase-two.css";
 import "./operations.css";
 import "./sustainability.css";
 import "./knowledge.css";
+import "./copilot.css";
 
 createRoot(document.getElementById("root")).render(<App />);
