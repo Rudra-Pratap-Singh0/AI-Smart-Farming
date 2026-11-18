@@ -274,6 +274,18 @@ app.post("/api/copilot", (req, res) => {
   res.json({ topic, answer, disclaimer: "This is rule-based farm guidance, not a substitute for a local agronomist or official treatment label." });
 });
 
+app.post("/api/simulate", (req, res) => {
+  const irrigation = number(req.body?.irrigation, 70);
+  const fertilizer = number(req.body?.fertilizer, 70);
+  const weatherReadiness = number(req.body?.weatherReadiness, 70);
+  const base = (irrigation * 0.35) + (fertilizer * 0.35) + (weatherReadiness * 0.3);
+  const yieldTons = Math.max(1.2, Number((1.6 + base / 28).toFixed(1)));
+  const cost = Math.round(13500 + fertilizer * 48 + irrigation * 32);
+  const revenue = Math.round(yieldTons * 1000 * 22.8);
+  const risk = Math.max(5, Math.min(90, Math.round(100 - base)));
+  res.json({ yieldTons, cost, revenue, profit: revenue - cost, risk, recommendation: risk > 40 ? "Increase weather readiness or refine irrigation scheduling to reduce risk." : "This scenario is reasonably balanced; monitor field readings weekly." });
+});
+
 app.get("/api/dashboard", (_req, res) => res.json(farmSnapshot));
 
 app.patch("/api/tasks/:taskId", (req, res) => {
